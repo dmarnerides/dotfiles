@@ -1,0 +1,8 @@
+[user]
+    name = Demetris Marnerides
+    email = dmarnerides@gmail.com
+    username = dmarnerides
+[core]
+    editor = nvim
+[credential]
+        helper = cache

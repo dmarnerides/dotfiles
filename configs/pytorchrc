@@ -1,0 +1,28 @@
+import boardom as bd # Import before matplotlib.pyplot for matlab.engine to work properly
+import torch
+from torch import nn
+import torch.nn.functional as F
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import cv2
+import pandas as pd
+
+__tv = torch.__version__
+__npv = np.__version__
+__mplv = mpl.__version__
+__cvv = cv2.__version__
+__bdv = bd.__version__
+__pdv = pd.__version__
+
+print(
+    f'Loaded:\n\tPyTorch {__tv} as torch,'
+    f'\n\ttorch.nn as nn,'
+    f'\n\ttorch.nn.funtional as F,'
+    f'\n\tNumPy {__npv} as np,'
+    f'\n\tMatplotlib {__mplv} as mpl,'
+    f'\n\tmatplotlib.pyplot as plt,'
+    f'\n\tPandas {__pdv} as pd,'
+    f'\n\tOpenCV {__cvv} as cv2,'
+    f'\n\tBoardom {__bdv} as bd.'
+)
