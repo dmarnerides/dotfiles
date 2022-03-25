@@ -30,6 +30,7 @@ files = {
     "condarc": {"source": "configs/condarc", "target": "~/.condarc"},
     "nvim": {"source": "configs/nvim", "target": "~/.config/nvim"},
     "tmux_conf": {"source": "configs/tmux.conf", "target": "~/.tmux.conf"},
+    "tmux_plugins": {"source": "configs/tmux/plugins", "target": "~/.tmux.conf"},
     "Xresources": {"source": "configs/Xresources", "target": "~/.Xresources"},
     "agignore": {"source": "configs/agignore", "target": "~/.agignore"},
 }
@@ -91,10 +92,13 @@ rm RobotoMono.zip
 cd $current
 """
 
-tpm_install_str = """
+TPM_LOCATION = '~/.tmux/plugins/'
+
+tpm_install_str = f"""
 current=$PWD
-mkdir -p configs/tmux/plugins/;
-cd configs/tmux/plugins/;
+mkdir -p {TPM_LOCATION}
+cd {TPM_LOCATION}
+rm -rf tpm
 git clone https://github.com/tmux-plugins/tpm.git;
 cd $current
 """
