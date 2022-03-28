@@ -29,6 +29,7 @@ files = {
     "flake8": {"source": "configs/flake8", "target": "~/.config/flake8"},
     "condarc": {"source": "configs/condarc", "target": "~/.condarc"},
     "nvim": {"source": "configs/nvim", "target": "~/.config/nvim"},
+    "vim": {"source": "configs/vimrc", "target": "~/.vimrc"},
     "tmux_conf": {"source": "configs/tmux.conf", "target": "~/.tmux.conf"},
     "Xresources": {"source": "configs/Xresources", "target": "~/.Xresources"},
     "agignore": {"source": "configs/agignore", "target": "~/.agignore"},
