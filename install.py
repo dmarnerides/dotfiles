@@ -21,6 +21,7 @@ BACKUP_DIR = os.path.join(INSTALL_DIR, "backups")
 README_FILE = os.path.join(INSTALL_DIR, "README")
 INSTALL_FILE = os.path.join(INSTALL_DIR, "install.py")
 UNINSTALL_FILE = os.path.join(INSTALL_DIR, "uninstall.py")
+TPM_LOCATION = os.path.expanduser('~/.tmux/plugins/')
 
 files = {
     "bash_aliases": {"source": "configs/bash_aliases.sh", "target": "~/.bash_aliases"},
@@ -72,12 +73,17 @@ apt_installs = [
 ]
 
 
-tmux_install_plugins_str = """
+tmux_install_plugins_str = f"""
+current=$PWD
+mkdir -p ~/.tmux/plugins/tpm
+rm -rf ~/.tmux/plugins/tpm
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 tmux new -d -s tmp
 tmux source ~/.tmux.conf
 ~/.tmux/plugins/tpm/bin/install_plugins
 wait $!
 tmux kill-session -t tmp
+cd $current
 """
 
 install_roboto_font_str = """
@@ -89,17 +95,6 @@ cd ~/.local/share/fonts
 wget https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/RobotoMono.zip
 unzip RobotoMono.zip 
 rm RobotoMono.zip
-cd $current
-"""
-
-TPM_LOCATION = '~/.tmux/plugins/'
-
-tpm_install_str = f"""
-current=$PWD
-mkdir -p {TPM_LOCATION}
-cd {TPM_LOCATION}
-rm -rf tpm
-git clone https://github.com/tmux-plugins/tpm.git;
 cd $current
 """
 
@@ -210,8 +205,6 @@ def install(opt):
         reinstall_neovim()
 
     if opt.tmux_installs:
-        print(">> Updating tpm git repository and installing tmux")
-        run_term(tpm_install_str)
         print(">> Installing tmux ")
         run_term(tmux_install_plugins_str)
 
