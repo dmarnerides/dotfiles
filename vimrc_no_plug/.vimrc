@@ -1,12 +1,11 @@
-syntax on
-set termguicolors
-colorscheme my_nvcode
-
-" General settings
 set nocompatible
 scriptencoding utf-8
 set encoding=utf-8
 set fileencoding=utf-8
+colorscheme my_nvcode
+syntax on
+
+" General settings
 set hidden
 set nobackup
 set nowritebackup
@@ -182,9 +181,6 @@ nnoremap <silent> <leader>O :<C-u>call append(line(".")-1, repeat([""], v:count1
 " Autocommands
 "
 autocmd BufEnter * setlocal formatoptions-=cro
-
-" Python colorize allow
-let g:python_highlight_all=1
 
 filetype plugin on
 
