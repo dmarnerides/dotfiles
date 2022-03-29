@@ -47,7 +47,6 @@ set signcolumn=number " merge signcolumn and number column into one
 set nowrap " don't wrap long lines
 set nolist
 set listchars=eol:$,nbsp:&,trail:£,extends:>,precedes:<,space:+
-set showbreak=↪
 set completeopt=noinsert,menuone,noselect " show menu even for one item do not auto select/insert
 set wildmenu
 set wildmode=longest:full,full
