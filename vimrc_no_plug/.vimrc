@@ -1,13 +1,14 @@
+syntax on
 set termguicolors
 colorscheme my_nvcode
 
 " General settings
 set nocompatible
 scriptencoding utf-8
-set encoding=utf-8  " Encoding
-set fileencoding=utf8
-set hidden " TextEdit might fail if hidden is not set. (CoC)
-set nobackup " Some servers have issues with backup files, see #649. (Coc)
+set encoding=utf-8
+set fileencoding=utf-8
+set hidden
+set nobackup
 set nowritebackup
 set mouse= "
 set modelines=1
@@ -45,7 +46,7 @@ set nocursorline " Don't show a line where the current cursor is
 set signcolumn=number " merge signcolumn and number column into one
 set nowrap " don't wrap long lines
 set nolist
-set listchars=eol:↲,nbsp:␣,trail:•,extends:⟩,precedes:⟨,space:␣
+set listchars=eol:$,nbsp:␣,trail:•,extends:>,precedes:<,space:␣
 " set listchars=eol:↲,tab:→,nbsp:␣,trail:•,extends:⟩,precedes:⟨,space:␣
 set showbreak=↪
 set completeopt=noinsert,menuone,noselect " show menu even for one item do not auto select/insert
@@ -183,7 +184,6 @@ nnoremap <silent> <leader>O :<C-u>call append(line(".")-1, repeat([""], v:count1
 " Autocommands
 "
 autocmd BufEnter * setlocal formatoptions-=cro
-autocmd CursorHold * silent call CocActionAsync('highlight')
 
 " Python colorize allow
 let g:python_highlight_all=1
