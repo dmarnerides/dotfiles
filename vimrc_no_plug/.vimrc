@@ -46,8 +46,7 @@ set nocursorline " Don't show a line where the current cursor is
 set signcolumn=number " merge signcolumn and number column into one
 set nowrap " don't wrap long lines
 set nolist
-set listchars=eol:$,nbsp:␣,trail:•,extends:>,precedes:<,space:␣
-" set listchars=eol:↲,tab:→,nbsp:␣,trail:•,extends:⟩,precedes:⟨,space:␣
+set listchars=eol:$,nbsp:&,trail:£,extends:>,precedes:<,space:+
 set showbreak=↪
 set completeopt=noinsert,menuone,noselect " show menu even for one item do not auto select/insert
 set wildmenu
