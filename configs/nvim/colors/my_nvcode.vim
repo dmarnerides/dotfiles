@@ -241,7 +241,7 @@ hi debugPc guifg=NONE ctermfg=NONE guibg=#4ec9b0 ctermbg=79 gui=NONE cterm=NONE
 hi debugBreakpoint guifg=#d16969 ctermfg=167 guibg=NONE ctermbg=NONE gui=reverse cterm=reverse
 hi GitSignsAdd guifg=#587c0c ctermfg=64 guibg=#181818 ctermbg=NONE gui=NONE cterm=NONE
 hi GitGutterAdd guifg=#587c0c ctermfg=64 guibg=#181818 ctermbg=NONE gui=NONE cterm=NONE
-hi CocGitAddSign guifg=#587c0c ctermfg=64 guibg=#181818 ctermbg=NONE gui=NONE cterm=NONE
+hi CocGitAddedSign guifg=#587c0c ctermfg=64 guibg=#181818 ctermbg=NONE gui=NONE cterm=NONE
 hi GitSignsChange guifg=#0c7d9d ctermfg=31 guibg=#181818 ctermbg=NONE gui=NONE cterm=NONE
 hi GitGutterChange guifg=#0c7d9d ctermfg=31 guibg=#181818 ctermbg=NONE gui=NONE cterm=NONE
 hi CocGitChangeSign guifg=#0c7d9d ctermfg=31 guibg=#181818 ctermbg=NONE gui=NONE cterm=NONE

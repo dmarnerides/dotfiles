@@ -140,3 +140,4 @@ vim.g["airline#extensions#coc#error_symbol"] = 'Error:'
 vim.g["airline#extensions#coc#warning_symbol"] = 'Warning:'
 vim.g["airline#extensions#coc#stl_format_err"] = '%E{[%e(#%fe)]}'
 vim.g["airline#extensions#coc#stl_format_warn"] = '%W{[%w(#%fw)]}'
+
