@@ -1,5 +1,3 @@
 channels:
   - conda-forge
-  - defaults
-channel_priority: strict
-allow_conda_downgrades: true
+auto_activate_base: false

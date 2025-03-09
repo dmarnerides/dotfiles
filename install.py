@@ -1,279 +1,431 @@
 #!/usr/bin/env python
-import os
+import sys
+import subprocess
 import argparse
+from pathlib import Path
+import platform
+import traceback
+import shutil
+import contextlib
+import traceback
+import urllib.request
+import zipfile
+import tarfile
 
+## TODO: Ensure all data paths are used in the configs
+## TODO: Check old configurations of nvim (online) and update the configs
 
-def run_term(cmd):
-    print(f"Running: {cmd}")
-    os.system(cmd)
-
-
-def copyanything(src, dst):
-    run_term(f"cp -r {src} {dst}")
-
-
-def deleteanything(t):
-    run_term(f"rm -rf {t}")
-
-
-INSTALL_DIR = os.path.expanduser("~/.dotfiles_install")
-BACKUP_DIR = os.path.join(INSTALL_DIR, "backups")
-README_FILE = os.path.join(INSTALL_DIR, "README")
-INSTALL_FILE = os.path.join(INSTALL_DIR, "install.py")
-UNINSTALL_FILE = os.path.join(INSTALL_DIR, "uninstall.py")
-TPM_LOCATION = os.path.expanduser('~/.tmux/plugins/')
-
-files = {
-    "bash_aliases": {"source": "configs/bash_aliases.sh", "target": "~/.bash_aliases"},
-    "gitconfig": {"source": "configs/gitconfig", "target": "~/.gitconfig"},
-    "pytorchrc": {"source": "configs/pytorchrc", "target": "~/.pytorchrc"},
-    "flake8": {"source": "configs/flake8", "target": "~/.config/flake8"},
-    "condarc": {"source": "configs/condarc", "target": "~/.condarc"},
-    "nvim": {"source": "configs/nvim", "target": "~/.config/nvim"},
-    "vim": {"source": "configs/vimrc", "target": "~/.vimrc"},
-    "tmux_conf": {"source": "configs/tmux.conf", "target": "~/.tmux.conf"},
-    "tmux_plugins": {"source": "configs/tmux/plugins", "target": "~/.tmux.conf"},
-    "Xresources": {"source": "configs/Xresources", "target": "~/.Xresources"},
-    "agignore": {"source": "configs/agignore", "target": "~/.agignore"},
-}
-
-for f in files.values():
-    f["target"] = os.path.expanduser(f["target"])
-    f["source"] = os.path.abspath(f["source"])
-    fname = os.path.basename(f["target"])
-    if fname == "":
-        raise RuntimeError(f'Remove slash from {f["target"]}')
-    f["backup"] = os.path.join(BACKUP_DIR, fname)
-
-data_dirs = {
-    "nvim_all": "~/.nvim-data",
-    "nvim_sessions": "~/.nvim-data/sessions",
-    "nvim_undodir": "~/.nvim-data/undodir",
-    "tmux_plugins": "~/.tmux",
-}
-
-data_dirs = {k: os.path.expanduser(v) for k, v in data_dirs.items()}
-
-apt_inst_str = "sudo apt -y install "
-apt_uninst_str = "sudo apt -y remove "
-apt_remove_repo = "sudo add-apt-repository -y --remove "
-apt_add_repo = "sudo add-apt-repository -y "
-pip_install = "pip install --user --upgrade "
-pip_uninstall = "pip uninstall -y "
-
-apt_installs = [
-    "curl",
-    "xclip",
-    "silversearcher-ag",
-    "autoconf",
-    "automake",
-    "pkg-config",
-    "xdotool",
-    "okular",
-    "unzip",
-]
-
-
-tmux_install_plugins_str = f"""
-current=$PWD
-mkdir -p ~/.tmux/plugins/tpm
-rm -rf ~/.tmux/plugins/tpm
-git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-tmux new -d -s tmp
-tmux source ~/.tmux.conf
-~/.tmux/plugins/tpm/bin/install_plugins
-wait $!
-tmux kill-session -t tmp
-cd $current
-"""
-
-install_roboto_font_str = """
-sudo apt install -y fonts-roboto
-sudo apt-get install -y unzip
-mkdir -p ~/.local/share/fonts
-current=$PWD
-cd ~/.local/share/fonts
-wget https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/RobotoMono.zip
-unzip RobotoMono.zip 
-rm RobotoMono.zip
-cd $current
-"""
-
-readme_msg = """Do NOT delete this folder. Instead use
+HOME = Path('~').expanduser()
+THIS_DIR = Path(__file__).parent
+INSTALL_DIR = HOME / '.mydotfiles'
+CONFIG_DIR = INSTALL_DIR / 'configs'
+BACKUP_DIR = INSTALL_DIR / 'backups'
+README_FILE = INSTALL_DIR / 'README'
+INSTALL_FILE = INSTALL_DIR / 'install.py'
+UNINSTALL_FILE = INSTALL_DIR / 'uninstall.py'
+README_MSG = """Do NOT delete this folder. Instead use
  'python dotfiles.py --uninstall'
 to remove dotfiles installation.
 """
+BASHRC = HOME / '.bashrc'
+BASHRC_CMD = f"""# <<< bashrc_mine start
+if [ -f {CONFIG_DIR / ".bashrc_mine"} ]; then
+    source {CONFIG_DIR / ".bashrc_mine"}
+fi
+PS1="\[\033[01;34m\]\w\[\033[00m\]\$ "
+# >>> bashrc_mine end
+"""
+
+CONFIG_FILES = [
+    {"source": "gitconfig", "link": ".gitconfig"},
+    {"source": "nvim", "link": ".config/nvim"},
+    {"source": "tmux.conf", "link": ".tmux.conf"},
+    {"source": "Xresources", "link": ".Xresources"},
+    {"source": "bashrc_mine.sh", "link": ".bashrc_mine"},
+    {"source": "inputrc", "link": ".inputrc"},
+    {"source": "condarc", "link": ".condarc"},
+]
+
+DATA_DIRS = {
+    "nvim_all": HOME / ".nvim-data",
+    "nvim_sessions": HOME / ".nvim-data/sessions",
+    "nvim_undodir": HOME / ".nvim-data/undodir",
+    "tmux_plugins": HOME / ".tmux",
+}
+
+def is_windows():
+    return platform.uname().system == "Windows"
+
+def is_linux():
+    return platform.uname().system == "Linux"
+
+if is_windows():
+    print('[Installer] Windows not supported yet')
+    sys.exit(1)
+
+@contextlib.contextmanager
+def working_directory(path):
+    """Changes working directory and returns to previous on exit."""
+    prev_cwd = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(prev_cwd)
+
+def clone_git_repo(url, dst_dir, new_name=''):
+    dst_dir = Path(dst_dir)
+    dst_dir.mkdir(exist_ok=True, parents=True)
+    if new_name:
+        dst_dir = dst_dir / new_name
+    else:
+        dst_dir = dst_dir / url.split("/")[-1].replace(".git", "")
+    run(f"git clone {url} {dst_dir}")
+
+class InstallError(Exception):
+    pass
+
+def run(cmd):
+    try:
+        print("[Installer] " + cmd)
+        subprocess.run(cmd, shell=True, stderr=subprocess.STDOUT, stdout=sys.stdout, check=True)
+    except subprocess.CalledProcessError as e:
+        raise InstallError(f"Error running command: {cmd}") from e
 
 
-def create_data_dirs():
-    for d in data_dirs.values():
-        if not os.path.exists(d):
-            os.makedirs(d)
+def rm_file(file_path):
+    file_path = Path(file_path)
+    if not file_path.exists():
+        return
+    if is_windows():
+        run(f"del /F /Q {file_path}")
+    elif is_linux():
+        run(f"rm -f {file_path}")
+
+def rm_dir(dir_path):
+    dir_path = Path(dir_path)
+    if not dir_path.exists():
+        return
+    if is_windows():
+        run(f"rmdir /S /Q {dir_path}")
+    elif is_linux():
+        run(f"rm -rf {dir_path}")
+
+def copyanything(src, dst):
+    if src.is_dir():
+        if dst.exists():
+            rm_dir(dst)
+        shutil.copytree(src, dst)
+    elif src.is_file():
+        if dst.exists():
+            rm_file(dst)
+        if not dst.parent.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+
+def deleteanything(t):
+    t = Path(t)
+    if t.is_dir():
+        rm_dir(t)
+    elif t.is_file():
+        rm_file(t)
+
+def patch_bashrc():
+    # First unpatch bashrc to remove the previous patch
+    unpatch_bashrc()
+
+    # find the conda initialization block
+    conda_str = "# >>> conda initialize >>>"
+    with open(BASHRC, 'r') as f:
+        lines = f.readlines()
+    start_idx = None
+    for i, line in enumerate(lines):
+        if conda_str in line:
+            start_idx = i
+            break
+    if start_idx is None:
+        start_idx = len(lines)
+    cmd = ["\n"] + [x+ '\n' for x in BASHRC_CMD.strip().split('\n')] +['\n']
+    lines = lines[:start_idx] + cmd + lines[start_idx:]
+    with open(BASHRC, 'w') as f:
+        f.writelines(lines)
+
+def unpatch_bashrc():
+    print("[Installer] Unpatching bashrc")
+    with open(BASHRC, 'r') as f:
+        lines = f.readlines()
+    # find indices where the patch starts and ends
+    start_idx = None
+    start_string = BASHRC_CMD.strip().split('\n')[0]
+    end_idx = None
+    end_string = BASHRC_CMD.strip().split('\n')[-1]
+    for i, line in enumerate(lines):
+        if start_string in line:
+            start_idx = i
+        if end_string in line:
+            end_idx = i
+    if (start_idx and (not end_idx)) or ((not start_idx) and end_idx):
+        raise InstallError('Malformed bashrc patch. Could not remove patch.')
+    if start_idx is None:
+        return
+    lines = lines[:start_idx-1] + lines[end_idx+2:]
+    with open(BASHRC, 'w') as f:
+        f.writelines(lines)
 
 
-def delete_data_dirs():
-    for d in data_dirs.values():
-        if os.path.exists(d):
-            print(f"Deleting {d}")
-            os.removedirs(d)
+def install_tmux_plugins():
+    TPM_DIR = HOME / '.tmux/plugins/tpm'
+    if TPM_DIR.exists():
+        print("[Installer] Removing existing tmux plugins")
+        shutil.rmtree(TPM_DIR)
+    clone_git_repo("https://github.com/tmux-plugins/tpm", HOME / ".tmux/plugins")
+    try:
+        run("tmux kill-session -t tmp_for_install")
+    except InstallError:
+        pass
 
-
-def remove_current():
-    for fdict in files.values():
-        deleteanything(fdict["target"])
-
-
-def restore_backups():
-    for fdict in files.values():
-        t, b = fdict["target"], f["backup"]
-        if os.path.exists(b):
-            deleteanything(t)
-            print(f"Restoring {t}")
-            copyanything(b, t)
+    run("tmux new -d -s tmp_for_install && "
+        "tmux source ~/.tmux.conf && "
+        "~/.tmux/plugins/tpm/bin/install_plugins && "
+        "wait $! && "
+        "tmux kill-session -t tmp_for_install"
+    )
 
 
 def create_backups_and_delete(opt):
-    print(f"Making backup directory {BACKUP_DIR}")
-    if os.path.exists(BACKUP_DIR):
-        raise RuntimeError(f"Backup directory already exists? {BACKUP_DIR}")
-    os.makedirs(BACKUP_DIR)
-    with open(README_FILE, "w") as f:
-        f.write(readme_msg)
+    print("[Installer] Creating backups and deleting existing files")
+    if not BACKUP_DIR.exists():
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    for fdict in CONFIG_FILES:
+        link = HOME / fdict["link"]
+        backup = BACKUP_DIR / fdict["link"]
+        if backup.exists():
+            # Do not overwrite existing backups
+            continue
+        if link.exists():
+            print(f"[Installer] Backing up {link}")
+            copyanything(link, backup)
+            deleteanything(link)
 
-    for key, fdict in files.items():
-        t, b = fdict["target"], fdict["backup"]
-        if os.path.exists(t):
-            print(f"Backing up {t}")
-            copyanything(t, b)
-            deleteanything(t)
 
+def restore_backups():
+    print("[Installer] Restoring backups")
+    for fdict in CONFIG_FILES:
+        link = HOME / fdict["link"]
+        backup = BACKUP_DIR / fdict["link"]
+        if backup.exists():
+            print(f"[Installer] Restoring {link}")
+            deleteanything(link)
+            copyanything(backup, link)
 
-def uninstall(opt):
-    print("Uninstalling.")
-    if opt.restore_backups:
-        restore_backups()
+def uninstall():
+    print("[Installer] Uninstalling.")
+    unpatch_bashrc()
+    if not INSTALL_DIR.exists():
+        print("[Installer] No installation found. Exiting")
     else:
-        remove_current()
-    if opt.rm_data is not None:
-        for d in opt.rm_data:
-            datum = data_dirs[d]
-            print(f"Removing data {datum}")
-            deleteanything(datum)
-    print("Removing installation.")
+        print("[Installer] Found installation. Uninstalling")
+
+    restore_backups()
+
     deleteanything(INSTALL_DIR)
-    print("Done")
 
+    print("[Installer] Uninstall done")
+    print("[Installer] You may want to remove the following data directories manually:")
+    for d in DATA_DIRS.values():
+        if d.exists():
+            print(f"[Installer]  -- {d}")
 
-def reinstall_neovim():
-    print(">> Reinstalling neovim")
-    run_term(apt_uninst_str + "neovim")
-    run_term(apt_remove_repo + "ppa:neovim-ppa/stable")
-    run_term(apt_remove_repo + "ppa:neovim-ppa/unstable")
-    run_term(apt_add_repo + "ppa:neovim-ppa/stable")
-    run_term(apt_inst_str + "neovim")
+def create_data_dirs():
+    print("[Installer] Creating data directories")
+    for d in DATA_DIRS.values():
+        if not d.exists():
+            print(f"[Installer] Creating {d}")
+            d.mkdir(parents=True, exist_ok=True)
 
+def delete_data_dirs(dirs):
+    if not dirs:
+        return
+    for k in dirs:
+        d = DATA_DIRS[k]
+        if d.exists():
+            print(f"[Installer] Deleting {d}")
+            shutil.rmtree(d)
+
+def create_link(t, l):
+    if l.exists():
+        print(f"[Installer] Removing existing link {l}")
+        deleteanything(l)
+    print(f"[Installer] Creating link {l} -> {t}")
+    if is_windows():
+        run(f"mklink {l} {t}")
+    elif is_linux():
+        run(f"ln -s {t} {l}")
 
 def install(opt):
-    print("Installing")
-    print(">> Creating installation directories")
-    os.makedirs(INSTALL_DIR)
+    print("[Installer] Installation started")
+    if not INSTALL_DIR.exists():
+        print("[Installer] Creating installation directories")
+        INSTALL_DIR.mkdir(parents=True, exist_ok=True)
+
     create_data_dirs()
-    print(">> Creating backups and deleting original files")
     create_backups_and_delete(opt)
 
-    #  print(">> Running conda bash init ")
-    #  run_term("conda init bash")
+    print("[Installer] Patching bashrc")
+    patch_bashrc()
 
-    print(">> Copying configurations")
-    for key, fdict in files.items():
-        print(f"  -- {key}")
-        t, s = fdict["target"], fdict["source"]
-        copyanything(s, t)
+    print("[Installer] Copying configurations")
+    # Do a clean install
+    if CONFIG_DIR.exists():
+        shutil.rmtree(CONFIG_DIR)
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    for fdict in CONFIG_FILES:
+        name, link_name = fdict["source"], fdict["link"]
+        print(f"[Installer] Installing {name}")
+        link = HOME / link_name
+        source = THIS_DIR / 'configs' / name
+        target = CONFIG_DIR/ link_name
+        copyanything(source, target)
+        create_link(target, link)
 
-    if opt.apt_installs:
-        print("---")
-        print(">> Running apt uninstalls and installs")
-        run_term(apt_inst_str + " ".join(apt_installs))
-
-    if opt.nvim_installs:
-        print("---")
-        print(">> Installing neovim configuration")
-        run_term("nvim +PackerInstall +qall")
-        run_term("nvim +PackerSync +qall")
-
-    if opt.reinstall_neovim:
-        print(">> Reinstalling neovim ")
-        reinstall_neovim()
-
-    if opt.tmux_installs:
-        print(">> Installing tmux ")
-        run_term(tmux_install_plugins_str)
-
-    print("---")
-    print(">> Copying install.py and uninstall.py")
-    thisfile = os.path.abspath(__file__)
-    copyanything(thisfile, INSTALL_FILE)
-    uninstallfile = os.path.join(os.path.dirname(thisfile), "uninstall.py")
-    copyanything(uninstallfile, UNINSTALL_FILE)
-    print("Done")
+    print("[Installer] Writing README")
+    with open(README_FILE, "w") as f:
+        f.write(README_MSG)
 
 
-def str2bool(v):
-    if v.lower() in ("yes", "true", "t", "y", "1"):
-        return True
-    elif v.lower() in ("no", "false", "f", "n", "0"):
-        return False
-    else:
-        raise argparse.ArgumentTypeError("Boolean value expected.")
+    print("[Installer] Copying install.py and uninstall.py")
+    copyanything(Path(__file__), INSTALL_FILE)
+    copyanything(THIS_DIR / "uninstall.py", UNINSTALL_FILE)
+    print("[Installer] Installation done")
+
+APT_REPOS_REMOVE = [
+'ppa:neovim-ppa/stable',
+]
+
+APT_REPOS_ADD = [
+'ppa:neovim-ppa/unstable',
+]
+
+APT_INSTALLS = [
+'ripgrep',
+'fd-find',
+'python-is-python3',
+'npm',
+'neovim',
+'build-essential',
+'cmake',
+]
+
+def do_apt_installs():
+    print("[Installer] Removing apt repositories")
+    for repo in APT_REPOS_REMOVE:
+        run(f"sudo add-apt-repository --remove {repo}")
+    print("[Installer] Adding apt repositories")
+    for repo in APT_REPOS_ADD:
+        run(f"sudo add-apt-repository {repo}")
+    print("[Installer] Updating apt")
+    run("sudo apt update")
+    print("[Installer] Installing apt packages")
+    pkgs = ' '.join(APT_INSTALLS)
+    run(f"sudo apt install -y {pkgs}")
 
 
-if __name__ == "__main__":
+def parse_args():
     parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="If True, only uninstalls."
+    )
+
     parser.add_argument(
         "--rm_data",
         type=str,
         nargs="+",
         default=[],
-        choices=list(data_dirs.keys()),
+        choices=list(DATA_DIRS.keys()) + ['all'],
         help="Data to be removed.",
     )
-    parser.add_argument("--uninstall", action="store_true", help="If True, only uninstalls.")
+
     parser.add_argument(
-        "--restore_backups",
-        action="store_true",
-        help="If we should restore backups when unistalling",
-    )
-    parser.add_argument(
-        "--reinstall_neovim",
-        action="store_true",
-        help="Whether to (apt) uninstall neovim before installing",
-    )
-    parser.add_argument(
-        "--nvim_installs",
-        action="store_true",
-        help="Whether to install nvim plugins",
-    )
-    parser.add_argument(
-        "--tmux_installs",
+        "--install_tmux_plugins",
         action="store_true",
         help="Whether to install tmux plugins",
     )
     parser.add_argument(
-        "--apt_installs",
+        "--do_apt_installs",
         action="store_true",
         help="Whether to install apt packages",
     )
-    parser.add_argument("--all", action="store_true", help="Uninstall all and reinstall all")
+    parser.add_argument(
+        "--fonts",
+        action="store_true",
+        help="Whether to install fonts",
+    )
     opt = parser.parse_args()
     opt.rm_data = set(opt.rm_data)
-    if opt.all:
-        opt.nvim_installs = True
-        opt.tmux_installs = True
-        opt.apt_installs = True
-    if os.path.exists(INSTALL_DIR):
-        print("Found installation. Uninstalling")
-        uninstall(opt)
+    if 'all' in opt.rm_data:
+        opt.rm_data = set(DATA_DIRS.keys())
+    unique_options = [opt.uninstall, opt.rm_data, opt.install_tmux_plugins, opt.do_apt_installs]
+    if sum(bool(x) for x in unique_options) > 1:
+        raise ValueError("Only one of --uninstall, --rm_data, --install_tmux_plugins --do_apt_installs can be set.")
+    return opt
+
+def download_and_extract_zip(url, target_dir, delete_after=False):
+    target_dir = Path(target_dir)
+    target_dir.mkdir(exist_ok=True, parents=True)
+    filename = target_dir / Path(url).name
+    if not filename.exists():
+        print(f"Downloading {url} ...")
+        urllib.request.urlretrieve(url, filename)
+    else:
+        print(f"Using existing file {filename}")
+    print(f"Extracting {filename} ...")
+    if str(filename).endswith("tar.gz"):
+        with tarfile.open(filename, "r:gz") as so:
+            so.extractall(path=target_dir)
+    else:
+        with zipfile.ZipFile(filename, "r") as zip_ref:
+            zip_ref.extractall(target_dir)
+    if delete_after:
+        filename.unlink()
+
+def install_fonts():
+    print("[Installer] Installing fonts")
+    url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/RobotoMono.zip"
+    target_dir = HOME / ".fonts/RobotoMono"
+    if target_dir.exists():
+        shutil.rmtree(target_dir)
+    target_dir.mkdir(exist_ok=True, parents=True)
+    download_and_extract_zip(url, target_dir, delete_after=True)
+    run("fc-cache -f -v")
+    print("[Installer] Fonts installed")
+    print("[Installer] You may want to set the font in your terminal emulator to 'RobotoMono Nerd Font'")
+
+
+def main():
+    opt = parse_args()
     if opt.uninstall:
-        exit()
+        uninstall()
+    elif opt.install_tmux_plugins:
+        print("[Installer] Installing tmux plugins")
+        install_tmux_plugins()
+    elif opt.rm_data:
+        delete_data_dirs(opt.rm_data)
+    elif opt.do_apt_installs:
+        do_apt_installs()
+    elif opt.fonts:
+        install_fonts()
     else:
         install(opt)
+
+if __name__ == '__main__':
+    try:
+        main()
+    except InstallError as e:
+        traceback.print_exc()
+        print('[Installer] Installation failed')
+        sys.exit(1)
+    print('[Installer] Installation successful')
+
