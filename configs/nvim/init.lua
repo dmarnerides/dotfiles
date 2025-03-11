@@ -42,5 +42,5 @@ require("autocmd")
 require("bdel")
 -- Setup custom comfortable motion
 require("comfortable_motion")
-
-
+-- Resizing splits
+require("resize")
