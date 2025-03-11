@@ -15,6 +15,9 @@ end
 local function cfg()
     require("nvim-tree").setup {
         on_attach = on_attach,
+        filters = {
+            git_ignored=false,
+        },
     }
     vim.keymap.set("n", "<leader>z", ":NvimTreeToggle<CR>",
         { desc = "[Nvim Tree] Toggle file tree", noremap = true, silent = true })

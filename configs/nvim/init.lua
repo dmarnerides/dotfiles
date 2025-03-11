@@ -1,13 +1,6 @@
--- Set the colorscheme first
--- TODO: Convert colorscheme to lua
--- pcall(vim.cmd, [[colorscheme mycolorscheme]])
 require('mycolorscheme')
---
--- Python
--- 
--- Run which to find python3
-vim.g.python3_host_prog = vim.fn.system("which python3")
-vim.g.python3_host_program = vim.g.python3_host_prog
+require("python")
+
 -- Disable providers we do not care a about
 vim.g.loaded_python_provider = 0
 vim.g.loaded_ruby_provider = 0
