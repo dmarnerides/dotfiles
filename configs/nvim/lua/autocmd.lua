@@ -23,27 +23,27 @@ nvim_create_augroups({
     },
 })
 
------------------------------------------------------------------
--- Ensure only one tab is open at all times
--- On startup, if multiple tabs were somehow opened, close extras.
-vim.api.nvim_create_autocmd("VimEnter", {
-  callback = function()
-    local tabs = vim.api.nvim_list_tabpages()
-    while #tabs > 1 do
-      vim.cmd("tabclose")
-      tabs = vim.api.nvim_list_tabpages()
-    end
-  end
-})
-
--- Whenever a new tab is entered, check and close it if it's an extra.
-vim.api.nvim_create_autocmd("TabNewEntered", {
-  callback = function()
-    local tabs = vim.api.nvim_list_tabpages()
-    if #tabs > 1 then
-      vim.cmd("tabclose")
-      vim.notify("Multiple tabs are disabled. Closing new tab.", vim.log.levels.WARN)
-    end
-  end
-})
------------------------------------------------------------------
+-- -----------------------------------------------------------------
+-- -- Ensure only one tab is open at all times
+-- -- On startup, if multiple tabs were somehow opened, close extras.
+-- vim.api.nvim_create_autocmd("VimEnter", {
+--   callback = function()
+--     local tabs = vim.api.nvim_list_tabpages()
+--     while #tabs > 1 do
+--       vim.cmd("tabclose")
+--       tabs = vim.api.nvim_list_tabpages()
+--     end
+--   end
+-- })
+-- 
+-- -- Whenever a new tab is entered, check and close it if it's an extra.
+-- vim.api.nvim_create_autocmd("TabNewEntered", {
+--   callback = function()
+--     local tabs = vim.api.nvim_list_tabpages()
+--     if #tabs > 1 then
+--       vim.cmd("tabclose")
+--       vim.notify("Multiple tabs are disabled. Closing new tab.", vim.log.levels.WARN)
+--     end
+--   end
+-- })
+-- -----------------------------------------------------------------
